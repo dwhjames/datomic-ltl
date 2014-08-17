@@ -39,11 +39,10 @@
   [db e a p]
   (let [card (lookup-cardinality db a)
         p1 (lift-p p card)]
-    (when-let [ds (datoms-ea db e a)]
-      (->> ds
-           (map :v)
-           set
-           p1))))
+    (->> (datoms-ea db e a)
+         (map :v)
+         set
+         p1)))
 
 
 (defn ltl-at-t
