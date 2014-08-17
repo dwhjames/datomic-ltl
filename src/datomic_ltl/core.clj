@@ -274,6 +274,12 @@
   (ltl-at-t db (inc t) e a p))
 
 
+;; #### Self-duality of X
+;;
+;; $$ \neg \mathrm{X} ~ \phi \equiv
+;;    \mathrm{X} ~ \neg \phi $$
+
+
 ;; ---
 
 ;; ### More internal helper functions
@@ -345,6 +351,23 @@
        true))))
 
 
+;; #### One-step semantics of G
+;;
+;; $$ \mathrm{G} ~ \phi \equiv
+;;    \phi \wedge \mathrm{X} ~ \mathrm{G} ~ \phi $$
+;;
+;;
+;; #### G distributes over conjunction
+;;
+;; $$ \mathrm{G} ~ (\phi \wedge \psi) \equiv
+;;    \mathrm{G} ~ \phi \wedge \mathrm{G} ~ \psi $$
+;;
+;;
+;; #### G includes the present
+;;
+;; $$ \mathrm{G} ~ \phi \rightarrow \phi \equiv \top $$
+
+
 ;; ### Temporal operator F (eventually)
 ;;
 ;; $$ \pi \vDash \mathrm{F} ~ \phi
@@ -380,6 +403,32 @@
                 (when-let [r (p1 curr-set)]
                   [(d/tx->t tx) r])
                 (recur (next hist) curr-set)))))))))
+
+
+;; #### One-step semantics of F
+;;
+;; $$ \mathrm{F} ~ \phi \equiv
+;;    \phi \vee \mathrm{X} ~ \mathrm{F} ~ \phi $$
+;;
+;;
+;; #### F distributes over disjunction
+;;
+;; $$ \mathrm{F} ~ (\phi \vee \psi) \equiv
+;;    \mathrm{F} ~ \phi \vee \mathrm{F} ~ \psi $$
+;;
+;;
+;; #### Duality of G and F
+;;
+;; $$ \neg \mathrm{G} ~ \phi \equiv
+;;    \mathrm{F} ~ \neg \phi $$
+;;
+;; $$ \neg \mathrm{F} ~ \phi \equiv
+;;    \mathrm{G} ~ \neg \phi $$
+;;
+;;
+;; #### F includes the present
+;;
+;; $$ \phi \rightarrow \mathrm{F} ~ \phi \equiv \top $$
 
 
 (defn ltl-eventually-globally
@@ -443,6 +492,38 @@
                   (recur (next hist) curr-set)))))))))))
 
 
+;; #### One-step semantics of U
+;;
+;; $$ \phi ~ \mathrm{U} ~ \psi \equiv
+;;    \psi \vee (\phi \wedge
+;;    \mathrm{X} ~ (\phi ~ \mathrm{U} ~ \psi)) $$
+;;
+;;
+;; #### U right-distributes over disjunction
+;;
+;; $$ \rho ~ \mathrm{U} ~ (\phi \vee \psi) \equiv
+;;    (\rho ~ \mathrm{U} ~ \phi) \vee
+;;    (\rho ~ \mathrm{U} ~ \psi) $$
+;;
+;;
+;; #### U left-distributes over conjunction
+;;
+;; $$ (\phi \wedge \psi) ~ \mathrm{U} ~ \rho \equiv
+;;    (\phi ~ \mathrm{U} ~ \rho) \wedge
+;;    (\psi ~ \mathrm{U} ~ \rho) $$
+;;
+;;
+;; #### F in terms of U
+;;
+;; $$ \mathrm{F} ~ \phi \equiv
+;;    \top ~ \mathrm{U} ~ \phi $$
+;;
+;;
+;; #### U includes the present
+;;
+;; $$ \phi \rightarrow (\psi ~ \mathrm{U} ~ \phi) \equiv \top $$
+
+
 ;; ### Temporal operator W (weak until)
 ;;
 ;; $$ \pi \vDash \phi ~ \mathrm{W} ~ \psi
@@ -493,6 +574,27 @@
                   (recur (next hist) curr-set))))
             :weak))
         :weak)))))
+
+
+;; #### One-step semantics of W
+;;
+;; $$ \phi ~ \mathrm{W} ~ \psi \equiv
+;;    \psi \vee (\phi \wedge
+;;    \mathrm{X} ~ (\phi ~ \mathrm{W} ~ \psi)) $$
+;;
+;;
+;; #### U in terms of W and F
+;;
+;; $$ \phi ~ \mathrm{U} ~ \psi \equiv
+;;    (\phi ~ \mathrm{W} ~ \psi) \wedge
+;;    \mathrm{F} ~ \psi $$
+;;
+;;
+;; #### W in terms of U and G
+;;
+;; $$ \phi ~ \mathrm{W} ~ \psi \equiv
+;;    (\phi ~ \mathrm{U} ~ \psi) \vee
+;;    \mathrm{G} ~ \psi $$
 
 
 ;; ### Temporal operator R (release)
@@ -546,3 +648,36 @@
             :unreleased))
         :unreleased)))))
 
+
+;; #### One-step semantics of R
+;;
+;; $$ \phi ~ \mathrm{R} ~ \psi \equiv
+;;    \psi \wedge (\phi \vee
+;;    \mathrm{X} ~ (\phi ~ \mathrm{R} ~ \psi)) $$
+;;
+;;
+;; #### Duality of U and R
+;;
+;; $$ \neg (\phi ~ \mathrm{U} ~ \psi) \equiv
+;;    \neg \phi ~ \mathrm{R} ~ \neg \psi $$
+;;
+;; $$ \neg (\phi ~ \mathrm{R} ~ \psi) \equiv
+;;    \neg \phi ~ \mathrm{U} ~ \neg \psi $$
+;;
+;;
+;; #### G in terms of R
+;;
+;; $$ \mathrm{G} ~ \phi \equiv
+;;    \bot ~ \mathrm{R} ~ \phi $$
+;;
+;;
+;; #### W in terms of R
+;;
+;; $$ \phi ~ \mathrm{W} ~ \psi \equiv
+;;    \phi ~ \mathrm{R} ~ (\phi \vee \psi) $$
+;;
+;;
+;; #### R in terms of W
+;;
+;; $$ \phi ~ \mathrm{R} ~ \psi \equiv
+;;    \phi ~ \mathrm{W} ~ (\phi \wedge \psi) $$
