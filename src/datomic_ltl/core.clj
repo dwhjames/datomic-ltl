@@ -103,7 +103,7 @@
         initial-set (v-set-as-of db t e a)]
     (or
      (when-let [r (p1 initial-set)]
-       [t t])
+       [t r])
      (when-let [datoms (-> db
                            (d/since t)
                            d/history
