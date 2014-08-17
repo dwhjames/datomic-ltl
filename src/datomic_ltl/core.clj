@@ -2,11 +2,166 @@
 ;;
 ;; The core namespace contains implementations of the temporal
 ;; operators in Linear Temporal Logic.
+;;
+;; ## Theory
+;;
+;; To begin, we must define terms and give a precise
+;; characterization of how LTL can be interpreted in Datomic.
+;;
+;; The following definitions are taken from:
+;;
+;; > Michael Huth and Mark Ryan,
+;; > *Logic in Computer Science* -
+;; > *Modelling and Reasoning about Systems*,
+;; > Second Edition,
+;; > Cambridge University Press, 2004.
+;; > (pp. 178-182)
+;;
+;;
+;; ### Definition 3.4
+;;
+;; A transition system \\( \mathcal{M} = (S, \rightarrow, L) \\)
+;; is a set of states \\( S \\) endowed with a transition relation
+;; \\( \rightarrow \\) (a binary relation in \\( S \\)), such
+;; that every \\( s \in S \\) has some \\( s' \in S \\) with
+;; \\( s \rightarrow s' \\), and a labelling function
+;; \\( L : S \rightarrow \mathcal{P}(\mathtt{Atoms}) \\).
+;;
+;;
+;; ### Interpretation of Definition 3.4 in Datomic
+;;
+;; We can interpet a Datomic database as a transition system that
+;; is roughly analogous to Definition 3.4; however, it does break
+;; a few rules. We can think of the set of states as the basis-t
+;; points of the database. The transition relation is trivial, as
+;; Datomic linearizes all transactions. For the database value `db`
+;; constructed from `(d/db conn)`, i.e., the latest available
+;; novelty, then let \\( t \\) be a valid basis-t value that is
+;; *strictly less than* `(d/basis-t db)`. The next state is
+;; `(d/next-t (d/as-of db t))`, which is \\( t + 1 \\). This is
+;; transition relation. The fly in the ointment is that
+;; `(d/next-t db)` is a basis-t point that identifies a state that
+;; does not yet exists (hence the *strictly less than* above). This
+;; next basis-t point identifies the database value that will exist
+;; after the next transaction. The *every* in Definition 3.4 does
+;; not hold, but a loose interpretation is arguably still useful.
+;; Finally, the labelling function can be see as an abstract
+;; function for looking up datoms in the database as of a point
+;; in time (a state), where \\( \mathcal{P}(\mathtt{Atoms}) \\)
+;; describes the value space of data than can be stored in Datomic.
+;;
+;;
+;; ### Definition 3.5
+;;
+;; A path in a model \\( \mathcal{M} = (S, \rightarrow, L) \\)
+;; is an infinite sequence of states
+;; \\( s _{1}, s _{2}, s _{3}, \dots \\) in \\( S \\)
+;; such that, for each \\( i \ge 1 \\),
+;; \\( s _{i} \rightarrow s _{i+1} \\). We write the path as
+;; \\( s _{1} \rightarrow s _{2} \rightarrow \dots \\).
+;;
+;;
+;; ### Interpretation of Definition 3.5 in Datomic
+;;
+;; In Datomic, there can be no infinite sequence of states,
+;; as the set of basis-t values is finite and the transition
+;; relation is strictly increasing partial function on these
+;; values. In plain terms, we can linearlly traverse the
+;; history of the database, but we are bound by the novelty
+;; that the peer is currently aware of.
+;;
+;; The means that some LTL formulas will have a degenerate
+;; interpretation in Datomic. For example,
+;; \\( \mathrm{G} ~ \mathrm{F} ~ \phi \\) expresses that
+;; \\( \phi \\) is satisfied infinitely often along the
+;; path in question. This is an example of a **liveness**
+;; property, *something good keeps happening*. However,
+;; as there are no infinite paths, there can be no
+;; *infinitely often*. The useful LTL formulas will be the
+;; ones that have a useful interpretation on finite paths.
+;; For example, a **safety** property usually states that
+;; *something bad never happens*, and is expressed as
+;; \\( \mathrm{G} ~ \neg \phi \\). We can adjust that
+;; interpretation for Datomic to say,
+;; *something bad never happened*.
+;;
+;;
+;; ### Definition 3.6
+;;
+;; Let \\( \mathcal{M} = (S, \rightarrow, L) \\) be a model and
+;; \\( \pi = s_1 \rightarrow \dots \\) be a path in
+;; \\( \mathcal{M} \\). Whether \\( \pi \\) satisfies an LTL
+;; formula is defined by the satisfaction relation
+;; \\( \vDash \\) as follows:
+;;
+;;   1. \\( \pi \vDash \top \\)
+;;   2. \\( \pi \nvDash \bot \\)
+;;   3. \\( \pi \vDash p \\) iff \\( p \in L(s_1) \\)
+;;   4. \\( \pi \vDash \neg \phi \\)
+;;      iff \\( \pi \nvDash \phi \\)
+;;   5. \\( \pi \vDash \phi _{1} \wedge \phi _{2} \\)
+;;      iff \\( \pi \vDash \phi _{1} \\)
+;;      and \\( \pi \vDash \phi _{2} \\)
+;;   6. \\( \pi \vDash \phi _{1} \vee \phi _{2} \\)
+;;      iff \\( \pi \vDash \phi _{1} \\)
+;;      or \\( \pi \vDash \phi _{2} \\)
+;;   7. \\( \pi \vDash \phi _{1} \rightarrow \phi _{2} \\)
+;;      iff \\( \pi \vDash \phi _{2} \\)
+;;      whenever \\( \pi \vDash \phi _{1} \\)
+;;   8. \\( \pi \vDash \mathrm{X} ~ \phi \\)
+;;      iff \\( \pi^2 \vDash \phi \\)
+;;   9. \\( \pi \vDash \mathrm{G} ~ \phi \\)
+;;      iff, for all \\( i \ge 1, \pi^i \vDash \phi \\)
+;;   10. \\( \pi \vDash \mathrm{F} ~ \phi \\)
+;;       iff there is some \\( i \ge 1 \\)
+;;       such that \\( \pi^i \vDash \phi \\)
+;;   11. \\( \pi \vDash \phi ~ \mathrm{U} ~ \psi \\)
+;;       iff there is some \\( i \ge 1 \\)
+;;       such that \\( \pi^2 \vDash \psi \\)
+;;       and for all \\( j = 1, \dots, i - 1 \\)
+;;       we have \\( \pi^j \vDash \phi \\)
+;;   12. \\( \pi \vDash \phi ~ \mathrm{W} ~ \psi \\)
+;;       iff either there is some \\( i \ge 1 \\)
+;;       such that \\( \pi^i \vDash \psi \\)
+;;       and for all \\( j = 1, \dots, i - 1 \\)
+;;       we have \\( \pi^j \vDash \phi \\);
+;;       or for all \\( k \ge 1 \\)
+;;       we have \\( \pi \vDash \phi \\)
+;;   13. \\( \pi \vDash \phi ~ \mathrm{R} ~ \psi \\)
+;;       iff either there is some \\( i \ge 1 \\)
+;;       such that \\( \pi^i \vDash \phi \\)
+;;       and for all \\( j = 1, \dots, i \\)
+;;       we have \\( \pi^j \vDash \psi \\);
+;;       or for all \\( k \ge 1 \\)
+;;       we have \\( \pi \vDash \psi \\)
+;;
+;;
+;; ### Definition 3.8
+;;
+;; Suppose \\( \mathcal{M} = (S, \rightarrow, L) \\) is a model,
+;; \\( s \in S \\), and \\( \phi \\) and LTL formula. We write
+;; \\( \mathcal{M}, s \vDash \phi \\) if, for every execution
+;; path \\( \pi \\) of \\( \mathcal{M} \\) starting at
+;; \\( s \\), we have \\( \pi \vDash \phi \\).
+;;
+;; ### Interpretations of Definitions 3.6 and 3.8 in Datomic
+;;
+;; As discussed above, paths in the Datomic interpretation are
+;; finite; moreover, from any state there is exactly one path
+;; as the transition relation defines at most one next state
+;; at all states. Therefore, given a database value `db` we have
+;; a model \\( \mathcal{M} \\), and given a basis-t point `t` we
+;; have a state \\( s \\), so we have precise interpretation of
+;; \\( \mathtt{db}, \mathtt{t} \vDash \phi \\) and the unique
+;; path \\( \pi \\).
+;;
 (ns datomic-ltl.core
   (:require [datomic.api :as d]))
 
 
 ;; ---
+
+;; ## Implementation
 
 ;; ### Internal helper functions
 
@@ -105,6 +260,11 @@
   (ltl-now (d/as-of db t) e a p))
 
 
+;; ### Temporal operator X (next)
+;;
+;; $$ \pi \vDash \mathrm{X} ~ \phi
+;;    \text{ iff } \pi^2 \vDash \phi $$
+
 (defn ltl-next-t
   "Test predicate `p` on the value(s) for attribute `a` for
    entity `e` in database `db` as of basis-t point `t+1`.
@@ -150,6 +310,11 @@
 ;; and the path extends to the current basis-t of the given
 ;; database value.
 
+;; ### Temporal operator G (globally)
+;;
+;; $$ \pi \vDash \mathrm{G} ~ \phi
+;;    \text{ iff, for all } i \ge 1, \pi^i \vDash \phi $$
+
 (defn ltl-globally
   "Test the predicate `p` on the value(s) for attribute `a` for
    entity `e` in database `db` beginning at basis-t point `t`.
@@ -179,6 +344,12 @@
                  (recur (next hist) curr-set)))))
        true))))
 
+
+;; ### Temporal operator F (eventually)
+;;
+;; $$ \pi \vDash \mathrm{F} ~ \phi
+;;    \text{ iff there is some } i \ge 1
+;;    \text{ such that } \pi^i \vDash \phi $$
 
 (defn ltl-eventually
   "Test the predicate `p` on the value(s) for attribute `a` for
@@ -226,6 +397,14 @@
      :else (recur (ltl-eventually db (inc t1) e a p)))))
 
 
+;; ### Temporal operator U (until)
+;;
+;; $$ \pi \vDash \phi ~ \mathrm{U} ~ \psi
+;;    \text{ iff there is some } i \ge 1
+;;    \text{ such that } \pi^2 \vDash \psi $$
+;; $$ \text{ and for all } j = 1, \dots, i - 1
+;;    \text{ we have } \pi^j \vDash \phi $$
+
 (defn ltl-until
   "Test predicates `p` and `q` on the value(s) for attribute `a` for
    entity `e` in the database `db` beginning at basis-t point `t`.
@@ -263,6 +442,16 @@
                 (when (p1 curr-set)
                   (recur (next hist) curr-set)))))))))))
 
+
+;; ### Temporal operator W (weak until)
+;;
+;; $$ \pi \vDash \phi ~ \mathrm{W} ~ \psi
+;;    \text{ iff either there is some } i \ge 1 $$
+;; $$ \text{ such that } \pi^i \vDash \psi \text{ and } $$
+;; $$ \text{ for all } j = 1, \dots, i - 1
+;;    \text{ we have } \pi^j \vDash \phi \text{;} $$
+;; $$ \text{ or for all } k \ge 1
+;;    \text{ we have } \pi \vDash \phi $$
 
 (defn ltl-weak-until
   "Test predicates `p` and `q` on the value(s) for attribute `a` for
@@ -305,6 +494,16 @@
             :weak))
         :weak)))))
 
+
+;; ### Temporal operator R (release)
+;;
+;; $$ \pi \vDash \phi ~ \mathrm{R} ~ \psi
+;;    \text{ iff either there is some } i \ge 1 $$
+;; $$ \text{ such that } \pi^i \vDash \phi \text{ and } $$
+;; $$ \text{ for all } j = 1, \dots, i
+;;    \text{ we have } \pi^j \vDash \psi \text{;} $$
+;; $$ \text{ or for all } k \ge 1
+;;    \text{ we have } \pi \vDash \psi $$
 
 (defn ltl-release
   "Test predicates `p` and `q` on the value(s) for attribute `a` for
