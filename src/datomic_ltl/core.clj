@@ -165,27 +165,6 @@
 
 ;; ### Internal helper functions
 
-(defn- rhistory
-  "A reduction function that produces a map from transaction
-   entity ids to the assertions and retractions that occured
-   in that transaction.
-
-       {12345
-        {:added (:a :b)
-         :removed (:c :d)}
-        12346}
-
-   The lists of values that were added and removed will be at
-   most one if the associated attribute is `:db.cardinality/one`"
-  [m d]
-  (update-in m
-             [(:tx d)
-              (if (:added d)
-                :added
-                :removed)]
-             #(conj % (:v d))))
-
-
 (defn- datoms-ea
   "Fetch a lazy sequence of datoms from the `:eavt` index of
    the given database value `db`, using `e` and `a` as the
@@ -282,7 +261,43 @@
 
 ;; ---
 
-;; ### More internal helper functions
+;; ### Internal helper functions to process the history of values
+
+(defn- build-history
+  "Given a lazy sequence of datoms extracted from a history
+   database (for a particular entity and attribute), build
+   a history of values that were added and removed, ordered
+   by transaction entity id.
+
+   The core computation of this function is a reduction of
+   the datoms into a sorted map that maps transaction
+   entity ids to the values that were asserted and retracted
+   in that transaction. The intermediate datastructure looks
+   like the following:
+
+       {12345
+        {:added (:a :b)
+         :removed (:c :d)}
+        12346
+         {...}
+        ...}
+
+   The lists of values that were added and removed will be at
+   most one if the associated attribute is `:db.cardinality/one`.
+
+   This function returns a lazy sequence of this sorted map."
+  [datoms]
+  (->> datoms
+       (reduce (fn [m datom]
+                 (update-in m
+                            [(:tx datom)
+                             (if (:added datom)
+                               :added
+                               :removed)]
+                            #(conj % (:v datom))))
+               (sorted-map))
+       seq))
+
 
 (defn- v-set-as-of
   "Fetch the set of values for attribute `a` for entity `e`
@@ -338,9 +353,7 @@
                          (d/since t)
                          d/history
                          (datoms-ea e a))]
-       (loop [hist (->> datoms
-                        (reduce rhistory (sorted-map))
-                        seq)
+       (loop [hist (build-history datoms)
               prev-set initial-set]
          (or
           (not hist)
@@ -392,9 +405,7 @@
                            (d/since t)
                            d/history
                            (datoms-ea e a))]
-       (loop [hist (->> datoms
-                        (reduce rhistory (sorted-map))
-                        seq)
+       (loop [hist (build-history datoms)
               prev-set initial-set]
          (when hist
            (let [[tx {:keys [added removed]}] (first hist)
@@ -479,9 +490,7 @@
                             (d/since t)
                             d/history
                             (datoms-ea e a))]
-        (loop [hist (->> datoms
-                         (reduce rhistory (sorted-map))
-                         seq)
+        (loop [hist (build-history datoms)
                prev-set initial-set]
           (when hist
             (let [[tx {:keys [added removed]}] (first hist)
@@ -561,9 +570,7 @@
                           (d/since t)
                           d/history
                           (datoms-ea e a))]
-        (loop [hist (->> datoms
-                         (reduce rhistory (sorted-map))
-                         seq)
+        (loop [hist (build-history datoms)
                prev-set initial-set]
           (if hist
             (let [[tx {:keys [added removed]}] (first hist)
@@ -634,9 +641,7 @@
                           (d/since t)
                           d/history
                           (datoms-ea e a))]
-        (loop [hist (->> datoms
-                         (reduce rhistory (sorted-map))
-                         seq)
+        (loop [hist (build-history datoms)
                prev-set initial-set]
           (if hist
             (let [[tx {:keys [added removed]}] (first hist)
