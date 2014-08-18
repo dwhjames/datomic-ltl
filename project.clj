@@ -8,4 +8,4 @@
                   :exclusions [org.clojure/clojure]]
                  [org.clojure/test.check "0.5.9" :scope "test"]]
   :plugins [[lein-marginalia "0.7.1"]]
-  :marginalia {:javascript ["http://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS_HTML"]})
+  :marginalia {:javascript ["https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS_HTML"]})
