@@ -1,6 +1,12 @@
 # datomic-ltl
 
-An experimental interpretation of [Linear Temporal Logic](http://en.wikipedia.org/wiki/Linear_temporal_logic) (LTL) for [Datomic](http://www.datomic.com/).
+An experimental interpretation of
+[Linear Temporal Logic](http://en.wikipedia.org/wiki/Linear_temporal_logic)
+(LTL) for [Datomic](http://www.datomic.com/).
+Please read the
+[documentation](https://dwhjames.github.io/datomic-ltl/index.html) to
+understand what is being attempted here.
+
 
 [![Build Status](https://travis-ci.org/dwhjames/datomic-ltl.svg?branch=master)](https://travis-ci.org/dwhjames/datomic-ltl)
 
