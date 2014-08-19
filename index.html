@@ -3233,7 +3233,7 @@ a basis-t point.</p>
    <code>a</code> for entity <code>e</code> in database <code>db</code>.</p>
 
 <p>   This returns the result of predicate <code>p</code>.</p>
-</td><td class="codes"><pre class="brush: clojure">(defn ltl-now
+</td><td class="codes"><pre class="brush: clojure">(defn now
   [db e a p]
   (let [card (lookup-cardinality db a)
         p1 (lift-p p card)]
@@ -3244,9 +3244,9 @@ a basis-t point.</p>
    entity <code>e</code> in database <code>db</code> as of basis-t point <code>t</code>.</p>
 
 <p>   This returns the result of predicate <code>p</code>.</p>
-</td><td class="codes"><pre class="brush: clojure">(defn ltl-at-t
+</td><td class="codes"><pre class="brush: clojure">(defn at-t
   [db t e a p]
-  (ltl-now (d/as-of db t) e a p))</pre></td></tr><tr><td class="docs"><h3>Temporal operator X (next)</h3>
+  (now (d/as-of db t) e a p))</pre></td></tr><tr><td class="docs"><h3>Temporal operator X (next)</h3>
 
 <p>$$ \pi \vDash \mathrm{X} ~ \phi
    \text{ iff } \pi^2 \vDash \phi $$</p>
@@ -3254,9 +3254,9 @@ a basis-t point.</p>
    entity <code>e</code> in database <code>db</code> as of basis-t point <code>t+1</code>.</p>
 
 <p>  This returns the result of predicate <code>p</code>.</p>
-</td><td class="codes"><pre class="brush: clojure">(defn ltl-next-t
+</td><td class="codes"><pre class="brush: clojure">(defn next-t
   [db t e a p]
-  (ltl-at-t db (inc t) e a p))</pre></td></tr><tr><td class="docs"><h4>Self-duality of X</h4>
+  (at-t db (inc t) e a p))</pre></td></tr><tr><td class="docs"><h4>Self-duality of X</h4>
 
 <p>$$ \neg \mathrm{X} ~ \phi \equiv
    \mathrm{X} ~ \neg \phi $$</p>
@@ -3330,7 +3330,7 @@ database value.</p>
 <p>  Returns true if the predicate <code>p</code> is satisfied globally, that
   is to say <code>p</code> is satisfied as of all basis-t points greater
   than or equal to <code>t</code>. Otherwise, logical false.</p>
-</td><td class="codes"><pre class="brush: clojure">(defn ltl-globally
+</td><td class="codes"><pre class="brush: clojure">(defn globally
   [db t e a p]
   (let [card (lookup-cardinality db a)
         p1 (lift-p p card)
@@ -3373,7 +3373,7 @@ database value.</p>
 <p>   Returns a vector of the basis-t and the logical truth value of
    the <em>first</em> point (greater than or equal to <code>t</code>) that satisfies
    the predicate. Otherwise, logical false.</p>
-</td><td class="codes"><pre class="brush: clojure">(defn ltl-eventually
+</td><td class="codes"><pre class="brush: clojure">(defn eventually
   [db t e a p]
   (let [card (lookup-cardinality db a)
         p1 (lift-p p card)
@@ -3420,13 +3420,13 @@ database value.</p>
 <p>   Returns the least basis-t greater than or equal to <code>t</code> for which
    the <code>globally</code> operator holds from that basis-t. Otherwise,
    logical false.</p>
-</td><td class="codes"><pre class="brush: clojure">(defn ltl-eventually-globally
+</td><td class="codes"><pre class="brush: clojure">(defn eventually-globally
   [db t e a p]
-  (loop [[t1 _] (ltl-eventually db t e a p)]
+  (loop [[t1 _] (eventually db t e a p)]
     (cond
      (not t1) false
-     (ltl-globally db t1 e a p) t1
-     :else (recur (ltl-eventually db (inc t1) e a p)))))</pre></td></tr><tr><td class="docs"><h3>Temporal operator U (until)</h3>
+     (globally db t1 e a p) t1
+     :else (recur (eventually db (inc t1) e a p)))))</pre></td></tr><tr><td class="docs"><h3>Temporal operator U (until)</h3>
 
 <p>$$ \pi \vDash \phi ~ \mathrm{U} ~ \psi
    \text{ iff there is some } i \ge 1
@@ -3443,7 +3443,7 @@ $$ \text{ and for all } j = 1, \dots, i - 1
    the <em>first</em> point (greater than or equal to <code>t</code>) that satisfies
    predicate <code>q</code> <strong>and</strong> where <code>p</code> has been continually satisfied
    previous to that point. Otherwise, logical false.</p>
-</td><td class="codes"><pre class="brush: clojure">(defn ltl-until
+</td><td class="codes"><pre class="brush: clojure">(defn until
   [db t e a p q]
   (let [card (lookup-cardinality db a)
         p1 (lift-p p card)
@@ -3513,7 +3513,7 @@ $$ \text{ or for all } k \ge 1
    <code>q</code> <strong>and</strong> where <code>p</code> has been continually satisfied previous to
    that point. Or, <code>:weak</code> if <code>q</code> is never satsified, but <code>p</code> has
    been globally satisfied. Otherwise, logical false.</p>
-</td><td class="codes"><pre class="brush: clojure">(defn ltl-weak-until
+</td><td class="codes"><pre class="brush: clojure">(defn weak-until
   [db t e a p q]
   (let [card (lookup-cardinality db a)
         p1 (lift-p p card)
@@ -3577,7 +3577,7 @@ $$ \text{ or for all } k \ge 1
    up until and including that point. Or, <code>:unreleased</code> if <code>p</code>
    is never satisfied, but <code>q</code> has been globally satisfied.
    Otherwise, logical false.</p>
-</td><td class="codes"><pre class="brush: clojure">(defn ltl-release
+</td><td class="codes"><pre class="brush: clojure">(defn release
   [db t e a p q]
   (let [card (lookup-cardinality db a)
         p1 (lift-p p card)
