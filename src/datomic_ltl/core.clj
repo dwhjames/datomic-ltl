@@ -216,7 +216,7 @@
 ;; in Datomic terms means we observe the database as of a
 ;; a basis-t point.
 
-(defn ltl-now
+(defn now
   "Test predicate `p` on the current value(s) for attribute
    `a` for entity `e` in database `db`.
 
@@ -230,13 +230,13 @@
          p1)))
 
 
-(defn ltl-at-t
+(defn at-t
   "Test predicate `p` on the value(s) for attribute `a` for
    entity `e` in database `db` as of basis-t point `t`.
 
    This returns the result of predicate `p`."
   [db t e a p]
-  (ltl-now (d/as-of db t) e a p))
+  (now (d/as-of db t) e a p))
 
 
 ;; ### Temporal operator X (next)
@@ -244,13 +244,13 @@
 ;; $$ \pi \vDash \mathrm{X} ~ \phi
 ;;    \text{ iff } \pi^2 \vDash \phi $$
 
-(defn ltl-next-t
+(defn next-t
   "Test predicate `p` on the value(s) for attribute `a` for
    entity `e` in database `db` as of basis-t point `t+1`.
 
   This returns the result of predicate `p`."
   [db t e a p]
-  (ltl-at-t db (inc t) e a p))
+  (at-t db (inc t) e a p))
 
 
 ;; #### Self-duality of X
@@ -336,7 +336,7 @@
 ;; $$ \pi \vDash \mathrm{G} ~ \phi
 ;;    \text{ iff, for all } i \ge 1, \pi^i \vDash \phi $$
 
-(defn ltl-globally
+(defn globally
   "Test the predicate `p` on the value(s) for attribute `a` for
    entity `e` in database `db` beginning at basis-t point `t`.
 
@@ -387,7 +387,7 @@
 ;;    \text{ iff there is some } i \ge 1
 ;;    \text{ such that } \pi^i \vDash \phi $$
 
-(defn ltl-eventually
+(defn eventually
   "Test the predicate `p` on the value(s) for attribute `a` for
    entity `e` in database `db` beginning at basis-t point `t`.
 
@@ -442,7 +442,7 @@
 ;; $$ \phi \rightarrow \mathrm{F} ~ \phi \equiv \top $$
 
 
-(defn ltl-eventually-globally
+(defn eventually-globally
   "Test the predicate `p` on the value(s) for attribute `a` for
    entity `e` in the database `db` beginning at basis-t point `t`.
 
@@ -450,11 +450,11 @@
    the `globally` operator holds from that basis-t. Otherwise,
    logical false."
   [db t e a p]
-  (loop [[t1 _] (ltl-eventually db t e a p)]
+  (loop [[t1 _] (eventually db t e a p)]
     (cond
      (not t1) false
-     (ltl-globally db t1 e a p) t1
-     :else (recur (ltl-eventually db (inc t1) e a p)))))
+     (globally db t1 e a p) t1
+     :else (recur (eventually db (inc t1) e a p)))))
 
 
 ;; ### Temporal operator U (until)
@@ -465,7 +465,7 @@
 ;; $$ \text{ and for all } j = 1, \dots, i - 1
 ;;    \text{ we have } \pi^j \vDash \phi $$
 
-(defn ltl-until
+(defn until
   "Test predicates `p` and `q` on the value(s) for attribute `a` for
    entity `e` in the database `db` beginning at basis-t point `t`.
 
@@ -543,7 +543,7 @@
 ;; $$ \text{ or for all } k \ge 1
 ;;    \text{ we have } \pi \vDash \phi $$
 
-(defn ltl-weak-until
+(defn weak-until
   "Test predicates `p` and `q` on the value(s) for attribute `a` for
    entity `e` in the database `db` beginning at basis-t point `t`.
 
@@ -614,7 +614,7 @@
 ;; $$ \text{ or for all } k \ge 1
 ;;    \text{ we have } \pi \vDash \psi $$
 
-(defn ltl-release
+(defn release
   "Test predicates `p` and `q` on the value(s) for attribute `a` for
    entity `e` in the database `db` beginning at basis-t point `t`.
 

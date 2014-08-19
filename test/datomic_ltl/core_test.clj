@@ -6,7 +6,7 @@
             [clojure.test.check.properties :as prop]
             [clojure.test.check.clojure-test :refer [defspec]]
             [datomic.api :as d]
-            [datomic-ltl.core :refer :all]))
+            [datomic-ltl.core :as ltl]))
 
 
 (def ^:dynamic *conn*
@@ -163,11 +163,11 @@
     p gen-pred]
    (let [[db t1 eid] (apply build-db v)]
      (= (boolean
-         (ltl-globally db t1 eid :user/props p))
+         (ltl/globally db t1 eid :user/props p))
         (boolean
          (and
-          (ltl-at-t db t1 eid :user/props p)
-          (ltl-globally db (inc t1) eid :user/props p)))))))
+          (ltl/at-t db t1 eid :user/props p)
+          (ltl/globally db (inc t1) eid :user/props p)))))))
 
 
 ;; F ɸ ≡ ɸ ∨ (X (F ɸ))
@@ -177,11 +177,11 @@
     p gen-pred]
    (let [[db t1 eid] (apply build-db v)]
      (= (boolean
-         (ltl-eventually db t1 eid :user/props p))
+         (ltl/eventually db t1 eid :user/props p))
         (boolean
          (or
-          (ltl-at-t db t1 eid :user/props p)
-          (ltl-eventually db (inc t1) eid :user/props p)))))))
+          (ltl/at-t db t1 eid :user/props p)
+          (ltl/eventually db (inc t1) eid :user/props p)))))))
 
 
 ;; ɸ U ψ ≡ ψ ∨ (ɸ ∧ (X (ɸ U ψ)))
@@ -192,13 +192,13 @@
     q gen-pred]
    (let [[db t1 eid] (apply build-db v)]
      (= (boolean
-         (ltl-until db t1 eid :user/props p q))
+         (ltl/until db t1 eid :user/props p q))
         (boolean
          (or
-          (ltl-at-t db t1 eid :user/props q)
+          (ltl/at-t db t1 eid :user/props q)
           (and
-           (ltl-at-t db t1 eid :user/props p)
-           (ltl-until db (inc t1) eid :user/props p q))))))))
+           (ltl/at-t db t1 eid :user/props p)
+           (ltl/until db (inc t1) eid :user/props p q))))))))
 
 
 ;; ɸ W ψ ≡ ψ ∨ (ɸ ∧ (X (ɸ W ψ)))
@@ -209,13 +209,13 @@
     q gen-pred]
    (let [[db t1 eid] (apply build-db v)]
      (= (boolean
-         (ltl-weak-until db t1 eid :user/props p q))
+         (ltl/weak-until db t1 eid :user/props p q))
         (boolean
          (or
-          (ltl-at-t db t1 eid :user/props q)
+          (ltl/at-t db t1 eid :user/props q)
           (and
-           (ltl-at-t db t1 eid :user/props p)
-           (ltl-weak-until db (inc t1) eid :user/props p q))))))))
+           (ltl/at-t db t1 eid :user/props p)
+           (ltl/weak-until db (inc t1) eid :user/props p q))))))))
 
 
 ;; ɸ R ψ ≡ ψ ∧ (ɸ ∨ (X (ɸ R ψ)))
@@ -226,13 +226,13 @@
     q gen-pred]
    (let [[db t1 eid] (apply build-db v)]
      (= (boolean
-         (ltl-release db t1 eid :user/props p q))
+         (ltl/release db t1 eid :user/props p q))
         (boolean
          (and
-          (ltl-at-t db t1 eid :user/props q)
+          (ltl/at-t db t1 eid :user/props q)
           (or
-           (ltl-at-t db t1 eid :user/props p)
-           (ltl-release db (inc t1) eid :user/props p q))))))))
+           (ltl/at-t db t1 eid :user/props p)
+           (ltl/release db (inc t1) eid :user/props p q))))))))
 
 
 ;; ## Important equivalences between LTL formulas
@@ -249,9 +249,9 @@
     p gen-pred]
    (let [[db t1 eid] (apply build-db v)]
      (= (not
-         (ltl-globally db t1 eid :user/props p))
+         (ltl/globally db t1 eid :user/props p))
         (boolean
-         (ltl-eventually db t1 eid :user/props (comp not p)))))))
+         (ltl/eventually db t1 eid :user/props (comp not p)))))))
 
 
 ;; ¬ (F ɸ) ≡ G (¬ ɸ)
@@ -261,9 +261,9 @@
     p gen-pred]
    (let [[db t1 eid] (apply build-db v)]
      (= (not
-         (ltl-eventually db t1 eid :user/props p))
+         (ltl/eventually db t1 eid :user/props p))
         (boolean
-         (ltl-globally db t1 eid :user/props (comp not p)))))))
+         (ltl/globally db t1 eid :user/props (comp not p)))))))
 
 
 ;; ¬ (X ɸ) ≡ X (¬ ɸ)
@@ -273,9 +273,9 @@
     p gen-pred]
    (let [[db t1 eid] (apply build-db v)]
      (= (not
-         (ltl-next-t db t1 eid :user/props p))
+         (ltl/next-t db t1 eid :user/props p))
         (boolean
-         (ltl-next-t db t1 eid :user/props (comp not p)))))))
+         (ltl/next-t db t1 eid :user/props (comp not p)))))))
 
 
 ;; ¬ (ɸ U ψ) ≡ (¬ ɸ) R (¬ ψ)
@@ -286,9 +286,9 @@
     q gen-pred]
    (let [[db t1 eid] (apply build-db v)]
      (= (not
-         (ltl-until db t1 eid :user/props p q))
+         (ltl/until db t1 eid :user/props p q))
         (boolean
-         (ltl-release db t1 eid :user/props
+         (ltl/release db t1 eid :user/props
                       (comp not p)
                       (comp not q)))))))
 
@@ -301,9 +301,9 @@
     q gen-pred]
    (let [[db t1 eid] (apply build-db v)]
      (= (not
-         (ltl-release db t1 eid :user/props p q))
+         (ltl/release db t1 eid :user/props p q))
         (boolean
-         (ltl-until db t1 eid :user/props
+         (ltl/until db t1 eid :user/props
                     (comp not p)
                     (comp not q)))))))
 
@@ -316,12 +316,12 @@
     p2 gen-pred]
    (let [[db t1 eid] (apply build-db v)]
      (= (boolean
-         (ltl-eventually db t1 eid :user/props
+         (ltl/eventually db t1 eid :user/props
                          #(or (p1 %) (p2 %))))
         (boolean
          (or
-          (ltl-eventually db t1 eid :user/props p1)
-          (ltl-eventually db t1 eid :user/props p2)))))))
+          (ltl/eventually db t1 eid :user/props p1)
+          (ltl/eventually db t1 eid :user/props p2)))))))
 
 
 ;; G (ɸ ∧ ψ) ≡ (G ɸ) ∧ (G ψ)
@@ -332,12 +332,12 @@
     p2 gen-pred]
    (let [[db t1 eid] (apply build-db v)]
      (= (boolean
-         (ltl-globally db t1 eid :user/props
+         (ltl/globally db t1 eid :user/props
                        #(and (p1 %) (p2 %))))
         (boolean
          (and
-          (ltl-globally db t1 eid :user/props p1)
-          (ltl-globally db t1 eid :user/props p2)))))))
+          (ltl/globally db t1 eid :user/props p1)
+          (ltl/globally db t1 eid :user/props p2)))))))
 
 
 ;; ρ U (ɸ ∨ ψ) ≡ (ρ U ɸ) ∨ (ρ U ψ)
@@ -349,14 +349,14 @@
     r gen-pred]
    (let [[db t1 eid] (apply build-db v)]
      (= (boolean
-         (ltl-until db t1 eid :user/props
+         (ltl/until db t1 eid :user/props
                     p
                     #(or (q %)
                          (r %))))
         (boolean
          (or
-          (ltl-until db t1 eid :user/props p q)
-          (ltl-until db t1 eid :user/props p r)))))))
+          (ltl/until db t1 eid :user/props p q)
+          (ltl/until db t1 eid :user/props p r)))))))
 
 
 ;; (ɸ ∧ ψ) U ρ ≡ (ɸ U ρ) ∧ (ψ U ρ)
@@ -368,14 +368,14 @@
     r gen-pred]
    (let [[db t1 eid] (apply build-db v)]
      (= (boolean
-         (ltl-until db t1 eid :user/props
+         (ltl/until db t1 eid :user/props
                     #(and (p %)
                           (q %))
                     r))
         (boolean
          (and
-          (ltl-until db t1 eid :user/props p r)
-          (ltl-until db t1 eid :user/props q r)))))))
+          (ltl/until db t1 eid :user/props p r)
+          (ltl/until db t1 eid :user/props q r)))))))
 
 
 ;; F ɸ ≡ ⊤ U ɸ
@@ -385,9 +385,9 @@
     p gen-pred]
    (let [[db t1 eid] (apply build-db v)]
      (= (boolean
-         (ltl-eventually db t1 eid :user/props p))
+         (ltl/eventually db t1 eid :user/props p))
         (boolean
-         (ltl-until db t1 eid :user/props
+         (ltl/until db t1 eid :user/props
                     (constantly true)
                     p))))))
 
@@ -399,9 +399,9 @@
     p gen-pred]
    (let [[db t1 eid] (apply build-db v)]
      (= (boolean
-         (ltl-globally db t1 eid :user/props p))
+         (ltl/globally db t1 eid :user/props p))
         (boolean
-         (ltl-release db t1 eid :user/props
+         (ltl/release db t1 eid :user/props
                       (constantly false)
                       p))))))
 
@@ -414,11 +414,11 @@
     q gen-pred]
    (let [[db t1 eid] (apply build-db v)]
      (= (boolean
-         (ltl-until db t1 eid :user/props p q))
+         (ltl/until db t1 eid :user/props p q))
         (boolean
          (and
-          (ltl-weak-until db t1 eid :user/props p q)
-          (ltl-eventually db t1 eid :user/props q)))))))
+          (ltl/weak-until db t1 eid :user/props p q)
+          (ltl/eventually db t1 eid :user/props q)))))))
 
 
 ;; ɸ W ψ ≡ (ɸ U ψ) ∨ (G ɸ)
@@ -429,11 +429,11 @@
     q gen-pred]
    (let [[db t1 eid] (apply build-db v)]
      (= (boolean
-         (ltl-weak-until db t1 eid :user/props p q))
+         (ltl/weak-until db t1 eid :user/props p q))
         (boolean
          (or
-          (ltl-until db t1 eid :user/props p q)
-          (ltl-globally db t1 eid :user/props p)))))))
+          (ltl/until db t1 eid :user/props p q)
+          (ltl/globally db t1 eid :user/props p)))))))
 
 
 ;; ɸ W ψ ≡ ɸ R (ɸ ∨ ψ)
@@ -444,9 +444,9 @@
     q gen-pred]
    (let [[db t1 eid] (apply build-db v)]
      (= (boolean
-         (ltl-weak-until db t1 eid :user/props p q))
+         (ltl/weak-until db t1 eid :user/props p q))
         (boolean
-         (ltl-release db t1 eid :user/props
+         (ltl/release db t1 eid :user/props
                       q
                       #(or (p %) (q %))))))))
 
@@ -459,9 +459,9 @@
     q gen-pred]
    (let [[db t1 eid] (apply build-db v)]
      (= (boolean
-         (ltl-release db t1 eid :user/props p q))
+         (ltl/release db t1 eid :user/props p q))
         (boolean
-         (ltl-weak-until db t1 eid :user/props
+         (ltl/weak-until db t1 eid :user/props
                          q
                          #(and (p %) (q %))))))))
 
@@ -475,15 +475,15 @@
     q gen-pred]
    (let [[db t1 eid] (apply build-db v)]
      (= (boolean
-         (ltl-until db t1 eid :user/props p q))
+         (ltl/until db t1 eid :user/props p q))
         (boolean
          (and
           (not
-           (ltl-until db t1 eid :user/props
+           (ltl/until db t1 eid :user/props
                       (comp not q)
                       #(and (not (p %))
                             (not (q %)))))
-          (ltl-eventually db t1 eid :user/props q)))))))
+          (ltl/eventually db t1 eid :user/props q)))))))
 
 
 ;; Remark 3.7
@@ -498,8 +498,8 @@
      ;; ɸ → ψ ≡ (¬ ɸ) ∨ ψ
      (= (boolean
          (or
-          (not (ltl-globally db t1 eid :user/props p))
-          (ltl-at-t db t1 eid :user/props p)))
+          (not (ltl/globally db t1 eid :user/props p))
+          (ltl/at-t db t1 eid :user/props p)))
         true))))
 
 
@@ -513,8 +513,8 @@
      ;; ɸ → ψ ≡ (¬ ɸ) ∨ ψ
      (= (boolean
          (or
-          (not (ltl-at-t db t1 eid :user/props p))
-          (ltl-until db t1 eid :user/props q p)))
+          (not (ltl/at-t db t1 eid :user/props p))
+          (ltl/until db t1 eid :user/props q p)))
         true))))
 
 
@@ -527,6 +527,6 @@
      ;; ɸ → ψ ≡ (¬ ɸ) ∨ ψ
      (= (boolean
          (or
-          (not (ltl-at-t db t1 eid :user/props p))
-          (ltl-eventually db t1 eid :user/props p)))
+          (not (ltl/at-t db t1 eid :user/props p))
+          (ltl/eventually db t1 eid :user/props p)))
         true))))
