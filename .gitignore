@@ -7,5 +7,3 @@ pom.xml.asc
 *.class
 /.lein-*
 /.nrepl-port
-
-scratch/scratch.clj
