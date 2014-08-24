@@ -3207,23 +3207,25 @@ path \( \pi \).</p>
   (-&gt; db
       (d/entity attr)
       :db/cardinality))</pre></td></tr><tr><td class="docs"><p>Lift a predicate function <code>p</code> according to a cardinality.
-   The lifted function expects to receive a set as an
-   argument.</p>
+   The lifted function expects to receive a basis-t value
+   and a set as an argument.</p>
 
 <p>   In the <code>:db.cardinality/one</code> case, the set is expected to
    have at most one element. Therefore, the predicate <code>p</code> is
    invoked with the <code>first</code> element of the set, which could
    be <code>nil</code>.</p>
 
-<p>  In the <code>:db.cardinality/many</code> case, the predicate <code>p</code> will
-  be invoked with the received set, which could be empty.</p>
+<p>   In the <code>:db.cardinality/many</code> case, the predicate <code>p</code> will
+   be invoked with the received set, which could be empty.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn- lift-p
   [p card]
   (case card
     :db.cardinality/one
-    #(p (first %))
+    (fn [t arg]
+      (p t (first arg)))
     :db.cardinality/many
-    #(p %)))</pre></td></tr><tr><td class="docs"><hr />
+    (fn [t arg]
+      (p t arg))))</pre></td></tr><tr><td class="docs"><hr />
 </td><td class="codes"></td></tr><tr><td class="docs"><h2>LTL point operators</h2>
 
 <p>The point operators evaluate at a specific point, which
@@ -3240,7 +3242,7 @@ a basis-t point.</p>
     (-&gt;&gt; (datoms-ea db e a)
          (map :v)
          set
-         p1)))</pre></td></tr><tr><td class="docs"><p>Test predicate <code>p</code> on the value(s) for attribute <code>a</code> for
+         (p1 (d/basis-t db)))))</pre></td></tr><tr><td class="docs"><p>Test predicate <code>p</code> on the value(s) for attribute <code>a</code> for
    entity <code>e</code> in database <code>db</code> as of basis-t point <code>t</code>.</p>
 
 <p>   This returns the result of predicate <code>p</code>.</p>
@@ -3336,7 +3338,7 @@ database value.</p>
         p1 (lift-p p card)
         initial-set (v-set-as-of db t e a)]
     (and
-     (p1 initial-set)
+     (p1 t initial-set)
      (if-let [datoms (-&gt; db
                          (d/since t)
                          d/history
@@ -3347,7 +3349,7 @@ database value.</p>
           (not hist)
           (let [[tx {:keys [added removed]}] (first hist)
                 curr-set (next-set prev-set added removed)]
-            (and (p1 curr-set)
+            (and (p1 (d/tx-&gt;t tx) curr-set)
                  (recur (next hist) curr-set)))))
        true))))</pre></td></tr><tr><td class="docs"><h4>One-step semantics of G</h4>
 
@@ -3379,7 +3381,7 @@ database value.</p>
         p1 (lift-p p card)
         initial-set (v-set-as-of db t e a)]
     (or
-     (when-let [r (p1 initial-set)]
+     (when-let [r (p1 t initial-set)]
        [t r])
      (when-let [datoms (-&gt; db
                            (d/since t)
@@ -3389,10 +3391,11 @@ database value.</p>
               prev-set initial-set]
          (when hist
            (let [[tx {:keys [added removed]}] (first hist)
+                 t1 (d/tx-&gt;t tx)
                  curr-set (next-set prev-set added removed)]
              (or
-                (when-let [r (p1 curr-set)]
-                  [(d/tx-&gt;t tx) r])
+                (when-let [r (p1 t1 curr-set)]
+                  [t1 r])
                 (recur (next hist) curr-set)))))))))</pre></td></tr><tr><td class="docs"><h4>One-step semantics of F</h4>
 
 <p>$$ \mathrm{F} ~ \phi \equiv
@@ -3414,19 +3417,7 @@ database value.</p>
 <h4>F includes the present</h4>
 
 <p>$$ \phi \rightarrow \mathrm{F} ~ \phi \equiv \top $$</p>
-</td><td class="codes"></td></tr><tr><td class="docs"><p>Test the predicate <code>p</code> on the value(s) for attribute <code>a</code> for
-   entity <code>e</code> in the database <code>db</code> beginning at basis-t point <code>t</code>.</p>
-
-<p>   Returns the least basis-t greater than or equal to <code>t</code> for which
-   the <code>globally</code> operator holds from that basis-t. Otherwise,
-   logical false.</p>
-</td><td class="codes"><pre class="brush: clojure">(defn eventually-globally
-  [db t e a p]
-  (loop [[t1 _] (eventually db t e a p)]
-    (cond
-     (not t1) false
-     (globally db t1 e a p) t1
-     :else (recur (eventually db (inc t1) e a p)))))</pre></td></tr><tr><td class="docs"><h3>Temporal operator U (until)</h3>
+</td><td class="codes"></td></tr><tr><td class="docs"><h3>Temporal operator U (until)</h3>
 
 <p>$$ \pi \vDash \phi ~ \mathrm{U} ~ \psi
    \text{ iff there is some } i \ge 1
@@ -3450,10 +3441,10 @@ $$ \text{ and for all } j = 1, \dots, i - 1
         q1 (lift-p q card)
         initial-set (v-set-as-of db t e a)]
     (or
-     (when-let [r (q1 initial-set)]
+     (when-let [r (q1 t initial-set)]
        [t r])
      (and
-      (p1 initial-set)
+      (p1 t initial-set)
       (when-let [datoms (-&gt; db
                             (d/since t)
                             d/history
@@ -3462,10 +3453,11 @@ $$ \text{ and for all } j = 1, \dots, i - 1
                prev-set initial-set]
           (when hist
             (let [[tx {:keys [added removed]}] (first hist)
+                  t1 (d/tx-&gt;t tx)
                   curr-set (next-set prev-set added removed)]
-              (if-let [r (q1 curr-set)]
-                [(d/tx-&gt;t tx) r]
-                (when (p1 curr-set)
+              (if-let [r (q1 t1 curr-set)]
+                [t1 r]
+                (when (p1 t1 curr-set)
                   (recur (next hist) curr-set)))))))))))</pre></td></tr><tr><td class="docs"><h4>One-step semantics of U</h4>
 
 <p>$$ \phi ~ \mathrm{U} ~ \psi \equiv
@@ -3520,10 +3512,10 @@ $$ \text{ or for all } k \ge 1
         q1 (lift-p q card)
         initial-set (v-set-as-of db t e a)]
     (or
-     (when-let [r (q1 initial-set)]
+     (when-let [r (q1 t initial-set)]
        [t r])
      (and
-      (p1 initial-set)
+      (p1 t initial-set)
       (if-let [datoms (-&gt; db
                           (d/since t)
                           d/history
@@ -3532,10 +3524,11 @@ $$ \text{ or for all } k \ge 1
                prev-set initial-set]
           (if hist
             (let [[tx {:keys [added removed]}] (first hist)
+                  t1 (d/tx-&gt;t tx)
                   curr-set (next-set prev-set added removed)]
-              (if-let [r (q1 curr-set)]
-                [(d/tx-&gt;t tx) r]
-                (when (p1 curr-set)
+              (if-let [r (q1 t1 curr-set)]
+                [t1 r]
+                (when (p1 t1 curr-set)
                   (recur (next hist) curr-set))))
             :weak))
         :weak)))))</pre></td></tr><tr><td class="docs"><h4>One-step semantics of W</h4>
@@ -3555,6 +3548,10 @@ $$ \text{ or for all } k \ge 1
 <p>$$ \phi ~ \mathrm{W} ~ \psi \equiv
    (\phi ~ \mathrm{U} ~ \psi) \vee
    \mathrm{G} ~ \psi $$</p>
+
+<p>$$ \phi ~ \mathrm{W} ~ \psi \equiv
+   \phi ~ \mathrm{U} ~ (\psi \vee
+   \mathrm{G} ~ \psi) $$</p>
 </td><td class="codes"></td></tr><tr><td class="docs"><h3>Temporal operator R (release)</h3>
 
 <p>$$ \pi \vDash \phi ~ \mathrm{R} ~ \psi
@@ -3572,10 +3569,9 @@ $$ \text{ or for all } k \ge 1
    occurs then <code>q</code> must be globally satisfied.</p>
 
 <p>   Returns the basis-t of the <em>first</em> point (greater than or equal
-   to <code>t</code>) that satisfies <code>p</code> <strong>and</strong> where <code>q</code> has been continu
-   predicate <code>q</code> <strong>and</strong> where <code>p</code> has been continually satisfied
-   up until and including that point. Or, <code>:unreleased</code> if <code>p</code>
-   is never satisfied, but <code>q</code> has been globally satisfied.
+   to <code>t</code>) that satisfies <code>p</code> <strong>and</strong> where <code>q</code> has been continually
+   satisfied up until and including that point. Or, <code>:unreleased</code>
+   if <code>p</code> is never satisfied, but <code>q</code> has been globally satisfied.
    Otherwise, logical false.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn release
   [db t e a p q]
@@ -3584,9 +3580,9 @@ $$ \text{ or for all } k \ge 1
         q1 (lift-p q card)
         initial-set (v-set-as-of db t e a)]
     (and
-     (q1 initial-set)
+     (q1 t initial-set)
      (or
-      (p1 initial-set)
+      (p1 t initial-set)
       (if-let [datoms (-&gt; db
                           (d/since t)
                           d/history
@@ -3595,10 +3591,11 @@ $$ \text{ or for all } k \ge 1
                prev-set initial-set]
           (if hist
             (let [[tx {:keys [added removed]}] (first hist)
+                  t1 (d/tx-&gt;t tx)
                   curr-set (next-set prev-set added removed)]
-              (when (q1 curr-set)
-                (if (p1 curr-set)
-                  (d/tx-&gt;t tx)
+              (when (q1 t1 curr-set)
+                (if (p1 t1 curr-set)
+                  t1
                   (recur (next hist) curr-set))))
             :unreleased))
         :unreleased)))))</pre></td></tr><tr><td class="docs"><h4>One-step semantics of R</h4>
