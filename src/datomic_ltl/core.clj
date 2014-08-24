@@ -190,22 +190,25 @@
 
 (defn- lift-p
   "Lift a predicate function `p` according to a cardinality.
-   The lifted function expects to receive a set as an
-   argument.
+   The lifted function expects to receive a basis-t value
+   and a set as an argument.
 
    In the `:db.cardinality/one` case, the set is expected to
    have at most one element. Therefore, the predicate `p` is
    invoked with the `first` element of the set, which could
    be `nil`.
 
-  In the `:db.cardinality/many` case, the predicate `p` will
-  be invoked with the received set, which could be empty."
+   In the `:db.cardinality/many` case, the predicate `p` will
+   be invoked with the received set, which could be empty."
   [p card]
   (case card
     :db.cardinality/one
-    #(p (first %))
+    (fn [t arg]
+      (p t (first arg)))
     :db.cardinality/many
-    #(p %)))
+    (fn [t arg]
+      (p t arg))))
+
 
 
 ;; ---
@@ -227,7 +230,7 @@
     (->> (datoms-ea db e a)
          (map :v)
          set
-         p1)))
+         (p1 (d/basis-t db)))))
 
 
 (defn at-t
@@ -348,7 +351,7 @@
         p1 (lift-p p card)
         initial-set (v-set-as-of db t e a)]
     (and
-     (p1 initial-set)
+     (p1 t initial-set)
      (if-let [datoms (-> db
                          (d/since t)
                          d/history
@@ -359,7 +362,7 @@
           (not hist)
           (let [[tx {:keys [added removed]}] (first hist)
                 curr-set (next-set prev-set added removed)]
-            (and (p1 curr-set)
+            (and (p1 (d/tx->t tx) curr-set)
                  (recur (next hist) curr-set)))))
        true))))
 
@@ -399,7 +402,7 @@
         p1 (lift-p p card)
         initial-set (v-set-as-of db t e a)]
     (or
-     (when-let [r (p1 initial-set)]
+     (when-let [r (p1 t initial-set)]
        [t r])
      (when-let [datoms (-> db
                            (d/since t)
@@ -409,10 +412,11 @@
               prev-set initial-set]
          (when hist
            (let [[tx {:keys [added removed]}] (first hist)
+                 t1 (d/tx->t tx)
                  curr-set (next-set prev-set added removed)]
              (or
-                (when-let [r (p1 curr-set)]
-                  [(d/tx->t tx) r])
+                (when-let [r (p1 t1 curr-set)]
+                  [t1 r])
                 (recur (next hist) curr-set)))))))))
 
 
@@ -482,10 +486,10 @@
         q1 (lift-p q card)
         initial-set (v-set-as-of db t e a)]
     (or
-     (when-let [r (q1 initial-set)]
+     (when-let [r (q1 t initial-set)]
        [t r])
      (and
-      (p1 initial-set)
+      (p1 t initial-set)
       (when-let [datoms (-> db
                             (d/since t)
                             d/history
@@ -494,10 +498,11 @@
                prev-set initial-set]
           (when hist
             (let [[tx {:keys [added removed]}] (first hist)
+                  t1 (d/tx->t tx)
                   curr-set (next-set prev-set added removed)]
-              (if-let [r (q1 curr-set)]
-                [(d/tx->t tx) r]
-                (when (p1 curr-set)
+              (if-let [r (q1 t1 curr-set)]
+                [t1 r]
+                (when (p1 t1 curr-set)
                   (recur (next hist) curr-set)))))))))))
 
 
@@ -562,10 +567,10 @@
         q1 (lift-p q card)
         initial-set (v-set-as-of db t e a)]
     (or
-     (when-let [r (q1 initial-set)]
+     (when-let [r (q1 t initial-set)]
        [t r])
      (and
-      (p1 initial-set)
+      (p1 t initial-set)
       (if-let [datoms (-> db
                           (d/since t)
                           d/history
@@ -574,10 +579,11 @@
                prev-set initial-set]
           (if hist
             (let [[tx {:keys [added removed]}] (first hist)
+                  t1 (d/tx->t tx)
                   curr-set (next-set prev-set added removed)]
-              (if-let [r (q1 curr-set)]
-                [(d/tx->t tx) r]
-                (when (p1 curr-set)
+              (if-let [r (q1 t1 curr-set)]
+                [t1 r]
+                (when (p1 t1 curr-set)
                   (recur (next hist) curr-set))))
             :weak))
         :weak)))))
@@ -634,9 +640,9 @@
         q1 (lift-p q card)
         initial-set (v-set-as-of db t e a)]
     (and
-     (q1 initial-set)
+     (q1 t initial-set)
      (or
-      (p1 initial-set)
+      (p1 t initial-set)
       (if-let [datoms (-> db
                           (d/since t)
                           d/history
@@ -645,10 +651,11 @@
                prev-set initial-set]
           (if hist
             (let [[tx {:keys [added removed]}] (first hist)
+                  t1 (d/tx->t tx)
                   curr-set (next-set prev-set added removed)]
-              (when (q1 curr-set)
-                (if (p1 curr-set)
-                  (d/tx->t tx)
+              (when (q1 t1 curr-set)
+                (if (p1 t1 curr-set)
+                  t1
                   (recur (next hist) curr-set))))
             :unreleased))
         :unreleased)))))

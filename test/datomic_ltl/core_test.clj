@@ -81,14 +81,14 @@
                    (gen/fmap (fn [b]
                                (reify clojure.lang.IFn
                                  (toString [this] (str "constantly " b))
-                                 (invoke [this x] b)))
+                                 (invoke [this t x] b)))
                              gen/boolean)]
                   [9
                    (gen/fmap
                     (fn [elem]
                       (reify clojure.lang.IFn
                         (toString [this] (str "test for " elem))
-                        (invoke [this coll] (some #{elem} coll))))
+                        (invoke [this t coll] (some #{elem} coll))))
                     (gen/elements propositions))]]))
 
 
@@ -317,7 +317,9 @@
    (let [[db t1 eid] (apply build-db v)]
      (= (boolean
          (ltl/eventually db t1 eid :user/props
-                         #(or (p1 %) (p2 %))))
+                         (fn [t v]
+                           (or (p1 t v)
+                               (p2 t v)))))
         (boolean
          (or
           (ltl/eventually db t1 eid :user/props p1)
@@ -333,7 +335,9 @@
    (let [[db t1 eid] (apply build-db v)]
      (= (boolean
          (ltl/globally db t1 eid :user/props
-                       #(and (p1 %) (p2 %))))
+                       (fn [t v]
+                         (and (p1 t v)
+                              (p2 t v)))))
         (boolean
          (and
           (ltl/globally db t1 eid :user/props p1)
@@ -351,8 +355,9 @@
      (= (boolean
          (ltl/until db t1 eid :user/props
                     p
-                    #(or (q %)
-                         (r %))))
+                    (fn [t v]
+                      (or (q t v)
+                          (r t v)))))
         (boolean
          (or
           (ltl/until db t1 eid :user/props p q)
@@ -369,8 +374,9 @@
    (let [[db t1 eid] (apply build-db v)]
      (= (boolean
          (ltl/until db t1 eid :user/props
-                    #(and (p %)
-                          (q %))
+                    (fn [t v]
+                      (and (p t v)
+                           (q t v)))
                     r))
         (boolean
          (and
@@ -388,7 +394,7 @@
          (ltl/eventually db t1 eid :user/props p))
         (boolean
          (ltl/until db t1 eid :user/props
-                    (constantly true)
+                    (fn [t v] true)
                     p))))))
 
 
@@ -402,7 +408,7 @@
          (ltl/globally db t1 eid :user/props p))
         (boolean
          (ltl/release db t1 eid :user/props
-                      (constantly false)
+                      (fn [t v] false)
                       p))))))
 
 
@@ -448,7 +454,9 @@
         (boolean
          (ltl/release db t1 eid :user/props
                       q
-                      #(or (p %) (q %))))))))
+                      (fn [t v]
+                        (or (p t v)
+                            (q t v)))))))))
 
 
 ;; ɸ R ψ ≡ ɸ W (ɸ ∧ ψ)
@@ -463,7 +471,9 @@
         (boolean
          (ltl/weak-until db t1 eid :user/props
                          q
-                         #(and (p %) (q %))))))))
+                         (fn [t v]
+                           (and (p t v)
+                                (q t v)))))))))
 
 
 ;; Theorem 3.10
@@ -481,8 +491,9 @@
           (not
            (ltl/until db t1 eid :user/props
                       (comp not q)
-                      #(and (not (p %))
-                            (not (q %)))))
+                      (fn [t v]
+                        (and (not (p t v))
+                             (not (q t v))))))
           (ltl/eventually db t1 eid :user/props q)))))))
 
 
