@@ -541,3 +541,31 @@
           (not (ltl/at-t db t1 eid :user/props p))
           (ltl/eventually db t1 eid :user/props p)))
         true))))
+
+
+
+(defn eventually-globally
+  "Test the predicate `p` on the value(s) for attribute `a` for
+   entity `e` in the database `db` beginning at basis-t point `t`.
+
+   Returns the least basis-t greater than or equal to `t` for which
+   the `globally` operator holds from that basis-t. Otherwise,
+   logical false."
+  [db t e a p]
+  (loop [[t1 _] (ltl/eventually db t e a p)]
+    (cond
+     (not t1) false
+     (ltl/globally db t1 e a p) t1
+     :else (recur (ltl/eventually db (inc t1) e a p)))))
+
+(defspec nesting-of-globally-inside-eventually
+  (prop/for-all
+   [v gen-init-tx-data
+    p gen-pred]
+   (let [[db t1 eid] (apply build-db v)]
+     (= (boolean
+         (eventually-globally db t1 eid :user/props p))
+        (boolean
+         (ltl/eventually db t1 eid :user/props
+                         (fn [t2 v]
+                           (ltl/globally db t2 eid :user/props p))))))))

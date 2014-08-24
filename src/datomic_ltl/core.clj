@@ -446,20 +446,6 @@
 ;; $$ \phi \rightarrow \mathrm{F} ~ \phi \equiv \top $$
 
 
-(defn eventually-globally
-  "Test the predicate `p` on the value(s) for attribute `a` for
-   entity `e` in the database `db` beginning at basis-t point `t`.
-
-   Returns the least basis-t greater than or equal to `t` for which
-   the `globally` operator holds from that basis-t. Otherwise,
-   logical false."
-  [db t e a p]
-  (loop [[t1 _] (eventually db t e a p)]
-    (cond
-     (not t1) false
-     (globally db t1 e a p) t1
-     :else (recur (eventually db (inc t1) e a p)))))
-
 
 ;; ### Temporal operator U (until)
 ;;
