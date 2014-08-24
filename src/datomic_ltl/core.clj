@@ -619,10 +619,9 @@
    occurs then `q` must be globally satisfied.
 
    Returns the basis-t of the *first* point (greater than or equal
-   to `t`) that satisfies `p` **and** where `q` has been continu
-   predicate `q` **and** where `p` has been continually satisfied
-   up until and including that point. Or, `:unreleased` if `p`
-   is never satisfied, but `q` has been globally satisfied.
+   to `t`) that satisfies `p` **and** where `q` has been continually
+   satisfied up until and including that point. Or, `:unreleased`
+   if `p` is never satisfied, but `q` has been globally satisfied.
    Otherwise, logical false."
   [db t e a p q]
   (let [card (lookup-cardinality db a)
