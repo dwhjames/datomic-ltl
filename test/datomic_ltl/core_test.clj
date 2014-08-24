@@ -428,7 +428,7 @@
 
 
 ;; ɸ W ψ ≡ (ɸ U ψ) ∨ (G ɸ)
-(defspec weak-until-in-terms-of-until-and-globally
+(defspec weak-until-in-terms-of-until-and-globally-1
   (prop/for-all
    [v gen-init-tx-data
     p gen-pred
@@ -440,6 +440,23 @@
          (or
           (ltl/until db t1 eid :user/props p q)
           (ltl/globally db t1 eid :user/props p)))))))
+
+
+;; ɸ W ψ ≡ ɸ U (ψ ∨ (G ɸ))
+(defspec weak-until-in-terms-of-until-and-globally-2
+  (prop/for-all
+   [v gen-init-tx-data
+    p gen-pred
+    q gen-pred]
+   (let [[db t1 eid] (apply build-db v)]
+     (= (boolean
+         (ltl/weak-until db t1 eid :user/props p q))
+        (boolean
+         (ltl/until db t1 eid :user/props
+                    p
+                    (fn [t2 v]
+                      (or (q t2 v)
+                          (ltl/globally db t2 eid :user/props p)))))))))
 
 
 ;; ɸ W ψ ≡ ɸ R (ɸ ∨ ψ)

@@ -594,6 +594,10 @@
 ;; $$ \phi ~ \mathrm{W} ~ \psi \equiv
 ;;    (\phi ~ \mathrm{U} ~ \psi) \vee
 ;;    \mathrm{G} ~ \psi $$
+;;
+;; $$ \phi ~ \mathrm{W} ~ \psi \equiv
+;;    \phi ~ \mathrm{U} ~ (\psi \vee
+;;    \mathrm{G} ~ \psi) $$
 
 
 ;; ### Temporal operator R (release)
