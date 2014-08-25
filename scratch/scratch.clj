@@ -72,32 +72,34 @@
 
 ;; alice's email addresses always start with "alice"
 (ltl/globally (d/db conn) 1000 alice :user/email
-              (partial every? #(.startsWith % "alice")))
+              (fn [t v]
+                (every? #(.startsWith % "alice")
+                        v)))
 ;; true
 
 ;; eventually alice gets a gmail address
 (ltl/eventually (d/db conn) 1000 alice :user/email
-                #(contains? % "alice@gmail.com"))
+                #(contains? %2 "alice@gmail.com"))
 ;; at basis-t 1004
 
 ;; alice has a hotmail address from basis-t 1001
 ;; until she gets an outlook address
 (ltl/until (d/db conn) 1001 alice :user/email
-               #(contains? % "alice@hotmail.com")
-               #(contains? % "alice@outlook.com"))
+           #(contains? %2 "alice@hotmail.com")
+           #(contains? %2 "alice@outlook.com"))
 ;; at basis-t 1006
 
 ;; alice always has at least one email address from basis-t 1001
 ;; until (weakly) she gets a facebook address
 (ltl/weak-until (d/db conn) 1001 alice :user/email
-                #(> (count %) 0)
-                #(contains? % "alice@facebook.com"))
+                #(> (count %2) 0)
+                #(contains? %2 "alice@facebook.com"))
 ;; but she never got a facebook address,
 ;; and thus never gave up on email
 
 ;; alice, from basis-t 1001 has a hotmail address
 ;; up to and including the point that she has 3 addresses
 (ltl/release (d/db conn) 1001 alice :user/email
-             #(= 3 (count %))
-             #(contains? % "alice@hotmail.com"))
+             #(= 3 (count %2))
+             #(contains? %2 "alice@hotmail.com"))
 ;; at basis-t 1004
